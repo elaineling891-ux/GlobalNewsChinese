@@ -96,32 +96,45 @@ def fetch_news():
     print("🟢 开始抓取新闻...")
     init_db()
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    
+
     for source in NEWS_SOURCES:
+        print(f"➡️ 抓取来源: {source['name']}")
         try:
             resp = requests.get(source["url"], headers=headers, timeout=30)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
             articles = soup.select(source["selector"])[:5]
+
+            if not articles:
+                print(f"⚠️ 没抓到文章: {source['name']}")
+                continue
+
             for a in articles:
                 title = a.get_text(strip=True)
                 href = a.get("href")
                 if not href.startswith("http"):
                     href = source["url"].rstrip("/") + href
+
                 try:
                     article_resp = requests.get(href, headers=headers, timeout=30)
                     article_resp.raise_for_status()
                     article_soup = BeautifulSoup(article_resp.text, "html.parser")
                     content_div = article_soup.find("article") or article_soup.find("div")
                     summary = content_div.get_text(strip=True) if content_div else title
-                except:
+                except Exception as e:
+                    print(f"⚠️ 文章内容抓取失败: {title}, {e}")
                     summary = title
-                rewritten = rewrite_news(title, summary)
+
+                try:
+                    rewritten = rewrite_news(title, summary)
+                except Exception as e:
+                    print(f"⚠️ 改写失败: {title}, {e}")
+                    rewritten = summary
+
                 img_tag = article_soup.find("img")
                 image_url = img_tag["src"] if img_tag else ""
                 save_news(title, href, rewritten, source["name"], image_url)
                 print(f"✅ 保存新闻: {title}")
-                time.sleep(random.randint(3,10))
         except requests.exceptions.RequestException as e:
             print(f"❌ {source['name']} 抓取失败:", e)
     print("🟢 抓取完成")
