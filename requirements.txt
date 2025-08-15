@@ -1,0 +1,9 @@
+
+fastapi
+uvicorn
+requests
+beautifulsoup4
+trafilatura
+psycopg2-binary
+gunicorn
+APScheduler
