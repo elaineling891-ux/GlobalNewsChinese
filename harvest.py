@@ -4,17 +4,17 @@ import psycopg2
 from datetime import datetime
 from openai import OpenAI
 import os
+import time
+import random
 
 # 初始化 OpenAI
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# 数据库 URL，从环境变量读取
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def init_db():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
-    # 创建表格（如果不存在）
     cur.execute("""
         CREATE TABLE IF NOT EXISTS news (
             id SERIAL PRIMARY KEY,
@@ -30,7 +30,6 @@ def init_db():
     cur.close()
     conn.close()
 
-
 def save_news(title, url, content, source, image_url):
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
@@ -41,7 +40,6 @@ def save_news(title, url, content, source, image_url):
     conn.commit()
     cur.close()
     conn.close()
-
 
 def rewrite_news(title, summary):
     prompt = f"""
@@ -55,21 +53,25 @@ def rewrite_news(title, summary):
     )
     return response.choices[0].message.content
 
-
 def fetch_news():
     print("🟢 开始抓取新闻...")
     init_db()
     url = "https://www.sinchew.com.my/"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "Accept-Language": "zh-CN,zh;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Referer": "https://www.sinchew.com.my/"
+    }
 
     try:
         resp = requests.get(url, headers=headers, timeout=30)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # 星洲网新闻列表
+        # 星洲网新闻列表（根据首页结构选择合适的 selector）
         articles = soup.select("div.list-group-item a")[:5]  # 前5条新闻
-
         if not articles:
             print("⚠️ 没有抓到新闻，可能 selector 需要调整")
             return
@@ -80,7 +82,7 @@ def fetch_news():
             if not href.startswith("http"):
                 href = "https://www.sinchew.com.my" + href
 
-            # 抓取新闻正文
+            # 抓取正文
             try:
                 article_resp = requests.get(href, headers=headers, timeout=30)
                 article_resp.raise_for_status()
@@ -88,7 +90,7 @@ def fetch_news():
                 content_div = article_soup.select_one("div.article-content")
                 summary = content_div.get_text(strip=True) if content_div else title
             except Exception:
-                summary = title  # 如果抓正文失败，用标题代替
+                summary = title
 
             # 改写为原创文章
             rewritten = rewrite_news(title, summary)
@@ -100,7 +102,14 @@ def fetch_news():
             save_news(title, href, rewritten, "SinChew", image_url)
             print(f"✅ 保存新闻: {title}")
 
+            # 随机延时 5~10 秒，防止被封
+            time.sleep(random.randint(5, 10))
+
         print("🟢 抓取完成")
 
+    except requests.exceptions.HTTPError as e:
+        print("❌ HTTP 错误:", e)
+    except requests.exceptions.RequestException as e:
+        print("❌ 网络请求错误:", e)
     except Exception as e:
-        print("❌ 抓取出错:", e)
+        print("❌ 其他错误:", e)
