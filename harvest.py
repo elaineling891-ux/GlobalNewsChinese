@@ -49,29 +49,38 @@ def fetch_news():
     print("🟢 开始抓取新闻...")
     init_db()
     url = "https://www.chinanews.com.cn/"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
+
     try:
         resp = requests.get(url, headers=headers, timeout=30)
         resp.raise_for_status()
+        print("网页长度:", len(resp.text))
         soup = BeautifulSoup(resp.text, "lxml")
-        # 调整 selector 保证抓到新闻
-        articles = soup.select("div.content_list a")[:5]
+
+        # 针对中新网首页新闻区域的 selector
+        articles = soup.select("div.content_left a")[:5]  # 抓取前5条新闻
+
         if not articles:
-            print("⚠️ 没有抓到新闻")
+            print("⚠️ 没有抓到新闻，可能 selector 需要再次调整")
+            return
+
         for a in articles:
             title = a.get_text(strip=True)
-            href = a['href']
+            href = a.get("href")
             if not href.startswith("http"):
                 href = "https://www.chinanews.com.cn" + href
             content = title
             rewritten = rewrite_content(content)
             img_tag = a.find("img")
-            image_url = img_tag['src'] if img_tag else ""
+            image_url = img_tag["src"] if img_tag else ""
             save_news(title, href, rewritten, "Chinanews", image_url)
+
         print("🟢 抓取完成")
     except Exception as e:
         print("❌ 抓取出错:", e)
-
+        
 def get_latest_news(limit=10):
     try:
         conn = psycopg2.connect(DATABASE_URL)
