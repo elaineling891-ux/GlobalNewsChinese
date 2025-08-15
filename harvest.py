@@ -97,3 +97,27 @@ def fetch_news():
         print("🟢 抓取完成")
     except Exception as e:
         print("❌ 抓取出错:", e)
+
+def get_latest_news(limit=10):
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("""SELECT title, url, content, source, image_url, created_at
+                       FROM news ORDER BY created_at DESC LIMIT %s""", (limit,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        news_list = []
+        for row in rows:
+            news_list.append({
+                "title": row[0],
+                "url": row[1],
+                "content": row[2],
+                "source": row[3],
+                "image_url": row[4],
+                "created_at": row[5].isoformat()
+            })
+        return news_list
+    except Exception as e:
+        print("❌ 获取新闻失败:", e)
+        return []
