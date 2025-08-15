@@ -74,10 +74,23 @@ def rewrite_news(title, summary):
     return response.choices[0].message.content
 
 NEWS_SOURCES = [
-    {"name": "联合新闻网", "url": "https://udn.com/news/index", "selector": "section.story-list a.story__headline"},
-    {"name": "自由时报", "url": "https://news.ltn.com.tw/", "selector": "div.latestnews a"},
-    {"name": "Yahoo 新闻华语", "url": "https://tw.news.yahoo.com/", "selector": "h3 a"}
+    {
+        "name": "联合新闻网",
+        "url": "https://udn.com/news/index",
+        "selector": "section.story-list h3 a"  # 文章标题链接
+    },
+    {
+        "name": "自由时报",
+        "url": "https://news.ltn.com.tw/",
+        "selector": "div.story a"  # 最新新闻标题链接
+    },
+    {
+        "name": "Yahoo 新闻华语",
+        "url": "https://tw.news.yahoo.com/",
+        "selector": "h3 a"  # 新闻标题链接
+    }
 ]
+
 
 def fetch_news():
     print("🟢 开始抓取新闻...")
