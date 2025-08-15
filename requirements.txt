@@ -1,9 +1,7 @@
 fastapi
 uvicorn
-apscheduler
-requests
+gunicorn
 psycopg2-binary
 beautifulsoup4
 lxml
-openai
-gunicorn
+requests
